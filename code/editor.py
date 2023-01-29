@@ -41,7 +41,7 @@ class Editor:
         # mouse wheel
         if event.type == pygame.MOUSEWHEEL:
             if pygame.key.get_pressed()[pygame.K_LCTRL]:
-                self.origin.y -= event.y * 50
+                self.origin.y += event.y * 50
             else:
                 self.origin.x -= event.y * 50
 
