@@ -6,6 +6,7 @@ from pygame.image import load
 class Menu:
     def __init__(self):
         self.display_surface = pygame.display.get_surface()
+        self.last_highlighted_indicator = None
         self.create_data()
         self.create_buttons()
 
@@ -59,20 +60,22 @@ class Menu:
                 return sprite.get_id()
 
     def highlight_indicator(self, index):
-        if index:
-            menu_tile = EDITOR_DATA[index]['menu']
-            if menu_tile == 'terrain':
-                pygame.draw.rect(self.display_surface,
-                                 BUTTON_LINE_COLOR, self.tile_button_rect.inflate(4, 4), 5, 4)
-            elif menu_tile == 'coin':
-                pygame.draw.rect(self.display_surface,
-                                 BUTTON_LINE_COLOR, self.coin_button_rect.inflate(4, 4), 5, 4)
-            elif menu_tile == 'enemy':
-                pygame.draw.rect(self.display_surface,
-                                 BUTTON_LINE_COLOR, self.enemy_button_rect.inflate(4, 4), 5, 4)
-            elif menu_tile in ('palm bg', 'palm fg'):
-                pygame.draw.rect(self.display_surface,
-                                 BUTTON_LINE_COLOR, self.palm_button_rect.inflate(4, 4), 5, 4)
+        if not index:
+            return
+
+        indicator = EDITOR_DATA[index]['menu']
+        if indicator == 'terrain':
+            pygame.draw.rect(self.display_surface,
+                             BUTTON_LINE_COLOR, self.tile_button_rect.inflate(4, 4), 5, 4)
+        elif indicator == 'coin':
+            pygame.draw.rect(self.display_surface,
+                             BUTTON_LINE_COLOR, self.coin_button_rect.inflate(4, 4), 5, 4)
+        elif indicator == 'enemy':
+            pygame.draw.rect(self.display_surface,
+                             BUTTON_LINE_COLOR, self.enemy_button_rect.inflate(4, 4), 5, 4)
+        elif indicator in ('palm bg', 'palm fg'):
+            pygame.draw.rect(self.display_surface,
+                             BUTTON_LINE_COLOR, self.palm_button_rect.inflate(4, 4), 5, 4)
 
     def display(self, index):
         self.buttons.update()
