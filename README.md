@@ -22,7 +22,7 @@ Pymario Maker written in Python Pygame based on [tutorial](https://www.youtube.c
 - [x] Setup
 - [x] Editor origin and main grid
 - [x] Changing the mouse cursor
-- [ ] Menu
+- [x] Menu
 - [ ] Level tiles
 - [ ] Level drawing logic
 - [ ] Draw the terrain
