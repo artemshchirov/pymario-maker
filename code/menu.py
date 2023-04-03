@@ -54,6 +54,8 @@ class Menu:
             if sprite.rect.collidepoint(mouse_pos):
                 if mouse_button[1]:  # middle mouse click
                     if sprite.items['alt']:
+                        print(len(sprite.items), sprite.items)
+                        print(len(sprite.items['alt']), sprite.items['alt'])
                         sprite.main_active = not sprite.main_active
                 if mouse_button[2]:  # right click
                     sprite.switch()
@@ -104,6 +106,6 @@ class Button(pygame.sprite.Sprite):
 
     def update(self):
         self.image.fill(BUTTON_BG_COLOR)
-        surf = self.items['main'][self.index][1]
+        surf = self.items['main'if self.main_active else 'alt'][self.index][1]
         rect = surf.get_rect(center=(self.rect.width/2, self.rect.height/2))
         self.image.blit(surf, rect)
