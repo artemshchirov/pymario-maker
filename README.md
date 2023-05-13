@@ -27,7 +27,7 @@ Pymario Maker written in Python Pygame based on [tutorial](https://www.youtube.c
 - [x] Level drawing logic
 - [x] Draw the terrain
 - [x] Draw the water
-- [ ] Tile animations
+- [x] Tile animations
 - [ ] Deleting tiles
 - [ ] In-game objects
 - [ ] Previewing items in the editor

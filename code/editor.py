@@ -4,8 +4,12 @@ from pygame.math import Vector2 as vector
 from pygame.mouse import get_pressed as mouse_buttons
 from pygame.mouse import get_pos as mouse_pos
 from pygame.image import load
-from settings import WINDOW_WIDTH, WINDOW_HEIGHT, TILE_SIZE, EDITOR_DATA, LINE_COLOR, NEIGHBOR_DIRECTIONS
-from support import get_path
+
+from support import get_path, import_folder
+from settings import (WINDOW_WIDTH, WINDOW_HEIGHT, TILE_SIZE,
+                      EDITOR_DATA, NEIGHBOR_DIRECTIONS,
+                      LINE_COLOR, ANIMATION_SPEED)
+
 from menu import Menu
 
 
@@ -17,7 +21,7 @@ class Editor:
 
         # imports
         self.land_tiles = land_tiles
-        self.import_water()
+        self.imports()
 
         # navigation
         self.origin = vector()
@@ -65,7 +69,7 @@ class Editor:
             if cell in self.canvas_data:
                 self.canvas_data[cell].terrain_neighbors = []
                 self.canvas_data[cell].water_on_top = False
-                
+
                 for name, side in NEIGHBOR_DIRECTIONS.items():
                     neighbor_cell = (cell[0] + side[0], cell[1] + side[1])
                     if neighbor_cell in self.canvas_data:
@@ -76,8 +80,25 @@ class Editor:
                         if self.canvas_data[neighbor_cell].has_terrain:
                             self.canvas_data[cell].terrain_neighbors.append(name)
 
-    def import_water(self):
+    def imports(self):
         self.water_bottom = load(get_path('../graphics/terrain/water/water_bottom.png'))
+
+        # animations
+        self.animations = {}
+        for key, value in EDITOR_DATA.items():
+            if value['graphics']:
+                graphics = import_folder(value['graphics'])
+                self.animations[key] = {
+                    'frame_index': 0,
+                    'frames': graphics,
+                    'length': len(graphics)
+                }
+
+    def animation_update(self, dt):
+        for value in self.animations.values():
+            value['frame_index'] += ANIMATION_SPEED * dt
+            if value['frame_index'] >= value['length']:
+                value['frame_index'] = 0
 
     # input
     def event_loop(self):
@@ -171,9 +192,10 @@ class Editor:
                 if tile.water_on_top:
                     self.display_surface.blit(self.water_bottom, pos)
                 else:
-                    test_surf = pygame.Surface((TILE_SIZE, TILE_SIZE))
-                    test_surf.fill('blue')
-                    self.display_surface.blit(test_surf, pos)
+                    frames = self.animations[3]['frames']
+                    index = int(self.animations[3]['frame_index'])
+                    water_surf = frames[index]
+                    self.display_surface.blit(water_surf, pos)
 
             if tile.has_terrain:
                 terrain_string = ''.join(tile.terrain_neighbors)
@@ -181,18 +203,25 @@ class Editor:
                 self.display_surface.blit(self.land_tiles[terrain_style], pos)
 
             if tile.coin:
-                test_surf = pygame.Surface((TILE_SIZE, TILE_SIZE))
-                test_surf.fill('yellow')
-                self.display_surface.blit(test_surf, pos)
+                frames = self.animations[tile.coin]['frames']
+                index = int(self.animations[tile.coin]['frame_index'])
+                coin_surf = frames[index]
+                coin_rect = coin_surf.get_rect(center=(pos[0] + TILE_SIZE // 2, pos[1] + TILE_SIZE // 2))
+                self.display_surface.blit(coin_surf, coin_rect)
 
             if tile.enemy:
-                test_surf = pygame.Surface((TILE_SIZE, TILE_SIZE))
-                test_surf.fill('red')
-                self.display_surface.blit(test_surf, pos)
+                frames = self.animations[tile.enemy]['frames']
+                index = int(self.animations[tile.enemy]['frame_index'])
+                enemy_surf = frames[index]
+                enemy_rect = enemy_surf.get_rect(midbottom=(pos[0] + TILE_SIZE // 2, pos[1] + TILE_SIZE))
+                self.display_surface.blit(enemy_surf, enemy_rect)
 
     # update
     def run(self, dt):
         self.event_loop()
+
+        # updating
+        self.animation_update(dt)
 
         # drawing
         self.display_surface.fill('whitesmoke')
