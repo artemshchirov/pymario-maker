@@ -1,5 +1,5 @@
 import pygame
-from settings import *
+from settings import EDITOR_DATA, WINDOW_WIDTH, WINDOW_HEIGHT, BUTTON_LINE_COLOR, BUTTON_BG_COLOR
 from pygame.image import load
 
 
