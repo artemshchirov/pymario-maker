@@ -6,9 +6,9 @@ from pygame.mouse import get_pos as mouse_pos
 from pygame.image import load
 
 from support import get_path, import_folder
-from settings import (WINDOW_WIDTH, WINDOW_HEIGHT, TILE_SIZE,
+from settings import (WINDOW_WIDTH, WINDOW_HEIGHT,
                       EDITOR_DATA, NEIGHBOR_DIRECTIONS,
-                      LINE_COLOR, ANIMATION_SPEED)
+                      TILE_SIZE, LINE_COLOR, ANIMATION_SPEED)
 
 from menu import Menu
 
@@ -39,6 +39,24 @@ class Editor:
 
         # menu
         self.menu = Menu()
+
+        # objects
+        self.canvas_objects = pygame.sprite.Group()
+        self.object_drag_active = False
+
+        # player
+        CanvasObject(pos=(WINDOW_WIDTH / 8, WINDOW_HEIGHT / 2),
+                     frames=self.animations[0]['frames'],
+                     tile_id=0,
+                     origin=self.origin,
+                     group=self.canvas_objects)
+
+        # sky
+        self.sky_handle = CanvasObject(pos=(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2),
+                                       frames=[self.sky_handle_surf],
+                                       tile_id=1,
+                                       origin=self.origin,
+                                       group=self.canvas_objects)
 
     # support
     def get_current_cell(self):
@@ -81,7 +99,8 @@ class Editor:
                             self.canvas_data[cell].terrain_neighbors.append(name)
 
     def imports(self):
-        self.water_bottom = load(get_path('../graphics/terrain/water/water_bottom.png'))
+        self.water_bottom = load(get_path('../graphics/terrain/water/water_bottom.png')).convert_alpha()
+        self.sky_handle_surf = load(get_path('../graphics/cursors/handle.png')).convert_alpha()
 
         # animations
         self.animations = {}
@@ -111,6 +130,8 @@ class Editor:
             self.selection_hotkeys(event)
             self.menu_click(event)
 
+            self.object_drag(event)
+
             self.canvas_add()
             self.canvas_remove()
 
@@ -134,6 +155,9 @@ class Editor:
         if self.pan_active:
             self.origin = vector(mouse_pos()) - self.pan_offset
 
+            for sprite in self.canvas_objects:
+                sprite.pan_pos(self.origin)
+
     def selection_hotkeys(self, event):
         # FIXME update menu images
         # TODO map to 1, 2, 3, 4 nums in keyboard
@@ -152,18 +176,25 @@ class Editor:
                 mouse_pos(), mouse_buttons())
 
     def canvas_add(self):
-        if mouse_buttons()[0] and not self.menu.rect.collidepoint(mouse_pos()):
+
+        if mouse_buttons()[0] and not self.menu.rect.collidepoint(mouse_pos()) and not self.object_drag_active:
             current_cell = self.get_current_cell()
+            if EDITOR_DATA[self.selection_index]['type'] == 'tile':
+                if current_cell != self.last_selected_cell:
+                    if current_cell in self.canvas_data:
+                        self.canvas_data[current_cell].add_id(self.selection_index)
+                    else:
+                        self.canvas_data[current_cell] = CanvasTile(
+                            self.selection_index)
 
-            if current_cell != self.last_selected_cell:
-                if current_cell in self.canvas_data:
-                    self.canvas_data[current_cell].add_id(self.selection_index)
-                else:
-                    self.canvas_data[current_cell] = CanvasTile(
-                        self.selection_index)
-
-                self.check_neighbors(current_cell)
-                self.last_selected_cell = current_cell
+                    self.check_neighbors(current_cell)
+                    self.last_selected_cell = current_cell
+            else:  # object
+                CanvasObject(pos=mouse_pos(),
+                             frames=self.animations[self.selection_index]['frames'],
+                             tile_id=self.selection_index,
+                             origin=self.origin,
+                             group=self.canvas_objects)
 
     def canvas_remove(self):
         if mouse_buttons()[2] and not self.menu.rect.collidepoint(mouse_pos()):
@@ -176,6 +207,19 @@ class Editor:
                     if self.canvas_data[current_cell].is_empty:
                         del self.canvas_data[current_cell]
                     self.check_neighbors(current_cell)
+
+    def object_drag(self, event):
+        if event.type == pygame.MOUSEBUTTONDOWN and mouse_buttons()[0]:
+            for sprite in self.canvas_objects:
+                if sprite.rect.collidepoint(event.pos):
+                    sprite.start_drag()
+                    self.object_drag_active = True
+
+        if event.type == pygame.MOUSEBUTTONUP and self.object_drag_active:
+            for sprite in self.canvas_objects:
+                if sprite.selected:
+                    sprite.drag_end(self.origin)
+                    self.object_drag_active = False
 
     # drawing
     def draw_tile_lines(self):
@@ -231,6 +275,7 @@ class Editor:
                 enemy_surf = frames[index]
                 enemy_rect = enemy_surf.get_rect(midbottom=(pos[0] + TILE_SIZE // 2, pos[1] + TILE_SIZE))
                 self.display_surface.blit(enemy_surf, enemy_rect)
+        self.canvas_objects.draw(self.display_surface)
 
     # update
     def run(self, dt):
@@ -238,6 +283,7 @@ class Editor:
 
         # updating
         self.animation_update(dt)
+        self.canvas_objects.update(dt)
 
         # drawing
         self.display_surface.fill('whitesmoke')
@@ -289,3 +335,47 @@ class CanvasTile:
     def check_content(self):
         if not self.has_terrain and not self.has_water and not self.coin and not self.enemy:
             self.is_empty = True
+
+
+class CanvasObject(pygame.sprite.Sprite):
+    def __init__(self, pos, frames, tile_id, origin, group):
+        super().__init__(group)
+        self.tile_id = tile_id
+
+        # animation
+        self.frames = frames
+        self.frame_index = 0
+
+        self.image = self.frames[self.frame_index]
+        self.rect = self.image.get_rect(midbottom=pos)
+
+        # movement
+        self.distance_to_origin = vector(self.rect.topleft) - origin
+        self.selected = False
+        self.mouse_offset = vector()
+
+    def start_drag(self):
+        self.selected = True
+        # distance between the topleft and the point player clicked on
+        self.mouse_offset = vector(mouse_pos()) - vector(self.rect.topleft)
+
+    def drag(self):
+        if self.selected:
+            self.rect.topleft = mouse_pos() - self.mouse_offset
+
+    def drag_end(self, origin):
+        self.selected = False
+        self.distance_to_origin = vector(self.rect.topleft) - origin
+
+    def animate(self, dt):
+        self.frame_index += ANIMATION_SPEED * dt
+        self.frame_index = 0 if self.frame_index >= len(self.frames) else self.frame_index
+        self.image = self.frames[int(self.frame_index)]
+        self.rect = self.image.get_rect(midbottom=self.rect.midbottom)
+
+    def pan_pos(self, origin):
+        self.rect.topleft = origin + self.distance_to_origin
+
+    def update(self, dt):
+        self.animate(dt)
+        self.drag()
